@@ -1,0 +1,1264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bronco Braves — Defensive Rotation Planner</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1a1c20;
+  --surface: #23262b;
+  --surface2: #2c3038;
+  --border: #383c44;
+  --text: #e8e9eb;
+  --text-dim: #8b909a;
+  --accent: #0057b8;
+  --accent-light: #3d8fdb;
+  --accent-glow: rgba(0,87,184,0.25);
+  --green: #2ea043;
+  --green-dim: rgba(46,160,67,0.15);
+  --red: #cf3d3d;
+  --red-dim: rgba(207,61,61,0.15);
+  --yellow: #d4a017;
+  --yellow-dim: rgba(212,160,23,0.15);
+  --orange: #e07020;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Source Sans 3', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.header {
+  background: linear-gradient(135deg, #0d0e10, #1a1c20);
+  border-bottom: 2px solid var(--accent);
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header h1 {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.header h1 span { color: var(--accent-light); }
+
+.header-actions { margin-left: auto; display: flex; gap: 8px; flex-shrink: 0; }
+
+.btn {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface2);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn:hover { border-color: var(--accent); background: var(--accent-glow); }
+.btn.primary { background: var(--accent); border-color: var(--accent); }
+.btn.primary:hover { background: var(--accent-light); }
+.btn.danger { border-color: var(--red); color: var(--red); }
+.btn.danger:hover { background: var(--red-dim); }
+
+/* Attendance */
+.attendance-bar {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.attendance-label {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  margin-right: 6px;
+  white-space: nowrap;
+}
+
+.att-player {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 4px;
+  border-radius: 4px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.12s;
+  user-select: none;
+}
+
+.att-player:hover { border-color: var(--accent); }
+.att-player.absent { opacity: 0.35; border-color: transparent; }
+.att-player.absent:hover { border-color: var(--border); }
+
+.att-player input[type="checkbox"] {
+  width: 13px; height: 13px;
+  accent-color: var(--accent);
+  cursor: pointer; flex-shrink: 0;
+}
+
+.att-name { font-size: 11px; font-weight: 600; white-space: nowrap; }
+
+.att-innings {
+  font-size: 9px; font-weight: 700;
+  padding: 1px 4px; border-radius: 2px; margin-left: 2px;
+}
+
+.att-innings.ok { background: var(--green-dim); color: var(--green); }
+.att-innings.warn { background: var(--yellow-dim); color: var(--yellow); }
+.att-innings.none { background: var(--border); color: var(--text-dim); }
+.att-innings.out { background: var(--red-dim); color: var(--red); }
+
+/* Layout */
+.main-layout { display: flex; min-height: calc(100vh - 100px); }
+
+.grid-area { flex: 1; padding: 12px 16px; overflow-x: auto; }
+
+/* Table */
+.rotation-table {
+  width: 100%;
+  min-width: 820px;
+  border-collapse: separate;
+  border-spacing: 2px;
+}
+
+.rotation-table th {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600; font-size: 12px;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-dim); padding: 8px 6px;
+  background: var(--surface); border-radius: 4px 4px 0 0;
+}
+
+.rotation-table th.pos-col { width: 110px; text-align: left; padding-left: 10px; }
+.rotation-table th.inning-col { text-align: center; position: relative; }
+
+.clear-inning {
+  display: inline-block;
+  font-size: 9px;
+  color: rgba(255,255,255,0.35);
+  cursor: pointer;
+  margin-left: 4px;
+  transition: color 0.15s;
+  vertical-align: middle;
+}
+
+.clear-inning:hover { color: #ff6b6b; }
+
+.rotation-table td {
+  background: var(--surface);
+  border-radius: 3px; height: 38px;
+  padding: 2px; vertical-align: middle; position: relative;
+}
+
+.rotation-table td.pos-cell {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 500; font-size: 12px;
+  text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-dim); padding-left: 10px;
+  background: var(--surface2); white-space: nowrap;
+}
+
+.rotation-table td.pos-cell.bench-cell { color: var(--yellow); font-style: italic; }
+
+td.drop-zone {
+  border: 1px dashed var(--border);
+  cursor: pointer; transition: all 0.12s;
+}
+
+td.drop-zone:hover { border-color: var(--accent); background: var(--accent-glow); }
+td.drop-zone.drag-over { border-color: var(--accent-light); background: var(--accent-glow); box-shadow: inset 0 0 10px var(--accent-glow); }
+td.drop-zone.invalid-drop { border-color: var(--red); background: var(--red-dim); }
+
+.suggestion-ghost {
+  font-family: 'Source Sans 3', sans-serif;
+  font-weight: 600; font-size: 10px;
+  padding: 2px 5px; border-radius: 3px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--text-dim);
+  opacity: 0.45;
+  text-align: center; display: block;
+  margin: 1px auto; width: calc(100% - 4px);
+  cursor: pointer; transition: all 0.15s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.suggestion-ghost:hover {
+  opacity: 0.85;
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  color: var(--text);
+}
+
+.suggestion-ghost.top-sug { opacity: 0.55; }
+.suggestion-ghost.mid-sug { opacity: 0.35; }
+.suggestion-ghost.low-sug { opacity: 0.25; font-size: 9px; }
+
+.suggestions-wrap {
+  display: flex; flex-direction: column;
+  gap: 0; width: 100%; padding: 1px 0;
+}
+
+.placed-player {
+  font-family: 'Source Sans 3', sans-serif;
+  font-weight: 600; font-size: 11px;
+  padding: 4px 6px; border-radius: 3px;
+  background: var(--accent-glow); border: 1px solid var(--accent);
+  color: var(--text); cursor: grab; text-align: center;
+  position: relative; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+  display: block; margin: 0 auto; width: calc(100% - 4px);
+}
+
+.placed-player:hover { background: rgba(0,87,184,0.4); }
+.placed-player:active { cursor: grabbing; }
+
+.placed-player .rank-ind {
+  font-size: 8px; font-weight: 700;
+  position: absolute; top: 0px; right: 2px;
+  color: var(--text-dim);
+}
+
+.placed-player.top-pick { border-color: var(--green); background: var(--green-dim); }
+.placed-player.mid-pick { border-color: var(--yellow); background: var(--yellow-dim); }
+.placed-player.low-pick { border-color: var(--orange); background: rgba(224,112,32,0.15); }
+
+td.bench-drop .placed-player {
+  background: rgba(100,100,100,0.15);
+  border-color: var(--border); color: var(--text-dim);
+}
+
+/* Separator */
+tr.separator-row td { height: 6px; background: transparent; padding: 0; border: none; }
+
+/* Pool header */
+tr.pool-header-row td {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600; font-size: 10px;
+  text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-dim); padding: 6px 6px 2px;
+  background: transparent; border: none; text-align: center;
+}
+
+tr.pool-header-row td.pool-label-cell {
+  text-align: left; padding-left: 10px;
+  color: var(--accent-light); font-size: 11px;
+}
+
+/* Pool cells */
+td.pool-cell {
+  background: var(--surface2); border-radius: 4px;
+  padding: 4px 3px; vertical-align: top;
+  border: 1px solid var(--border);
+}
+
+td.pool-cell.pool-label-td {
+  background: transparent; border: none;
+  vertical-align: top; padding-top: 6px;
+}
+
+.pool-chip {
+  font-family: 'Source Sans 3', sans-serif;
+  font-weight: 600; font-size: 10px;
+  padding: 3px 5px; margin-bottom: 2px;
+  border-radius: 3px; background: var(--surface);
+  border: 1px solid var(--border); color: var(--text);
+  cursor: grab; user-select: none; transition: all 0.1s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: block; text-align: center;
+}
+
+.pool-chip:hover { border-color: var(--accent); background: var(--accent-glow); }
+.pool-chip:active { cursor: grabbing; opacity: 0.5; }
+.pool-chip.dragging { opacity: 0.3; }
+.pool-chip.has-warning { border-color: var(--yellow); color: var(--yellow); }
+.pool-chip.has-error { border-color: var(--red); color: var(--red); }
+
+.pool-empty {
+  font-size: 9px; color: var(--text-dim);
+  text-align: center; padding: 4px 2px;
+  font-style: italic; opacity: 0.5;
+}
+
+/* Validation */
+.validation-panel {
+  width: 240px; min-width: 240px;
+  background: var(--surface); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+
+.panel-title {
+  font-family: 'Oswald', sans-serif;
+  font-weight: 600; font-size: 12px;
+  text-transform: uppercase; letter-spacing: 2px;
+  color: var(--text-dim); padding: 12px 14px 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.validation-list { flex: 1; overflow-y: auto; padding: 6px; }
+
+.v-item {
+  font-size: 11px; padding: 5px 8px; margin-bottom: 2px;
+  border-radius: 3px; display: flex; align-items: flex-start;
+  gap: 5px; line-height: 1.35;
+}
+
+.v-item.error { background: var(--red-dim); color: var(--red); }
+.v-item.warn { background: var(--yellow-dim); color: var(--yellow); }
+.v-item.ok { background: var(--green-dim); color: var(--green); }
+.v-icon { font-size: 12px; flex-shrink: 0; }
+
+.suggest-section { padding: 8px; border-top: 1px solid var(--border); }
+.suggest-section .btn { width: 100%; text-align: center; }
+
+/* Innings bar chart */
+.innings-chart { padding: 4px 6px; }
+
+.inn-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 3px;
+  height: 20px;
+}
+
+.inn-bar-name {
+  font-size: 10px;
+  font-weight: 600;
+  width: 80px;
+  min-width: 80px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text);
+}
+
+.inn-bar-track {
+  flex: 1;
+  height: 14px;
+  background: var(--surface2);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.inn-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 4px;
+}
+
+.inn-bar-fill.fill-0 { width: 0%; background: var(--border); }
+.inn-bar-fill.fill-1 { width: 16.67%; background: var(--red); }
+.inn-bar-fill.fill-2 { width: 33.33%; background: var(--orange); }
+.inn-bar-fill.fill-3 { width: 50%; background: var(--yellow); }
+.inn-bar-fill.fill-4 { width: 66.67%; background: var(--accent); }
+.inn-bar-fill.fill-5 { width: 83.33%; background: var(--accent-light); }
+.inn-bar-fill.fill-6 { width: 100%; background: var(--green); }
+
+.inn-bar-count {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 10px;
+  text-align: right;
+}
+
+.inn-bar-warn {
+  font-size: 8px;
+  color: var(--red);
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+/* Context menu */
+.context-menu {
+  position: fixed; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 4px 0; z-index: 200; display: none;
+  min-width: 130px; box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+
+.context-menu-item {
+  padding: 7px 12px; font-size: 11px;
+  cursor: pointer; transition: background 0.1s;
+}
+
+.context-menu-item:hover { background: var(--accent-glow); }
+.context-menu-item.danger { color: var(--red); }
+
+@media (max-width: 1100px) {
+  .validation-panel { width: 200px; min-width: 200px; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Bronco Braves <span>Defensive Rotation</span></h1>
+  <div class="header-actions">
+    <button class="btn primary" onclick="autoFill()">⚡ Auto-Fill</button>
+    <button class="btn" onclick="suggestInning()">💡 Suggest Next</button>
+    <button class="btn" onclick="exportPrint()">📄 Print / Save PDF</button>
+    <button class="btn danger" onclick="clearAll()">✕ Clear All</button>
+  </div>
+</div>
+
+<div class="attendance-bar" id="attendanceBar"></div>
+
+<div class="main-layout">
+  <div class="grid-area">
+    <table class="rotation-table" id="rotationTable"></table>
+  </div>
+  <div class="validation-panel">
+    <div class="panel-title">Validation</div>
+    <div class="validation-list" id="validationList"></div>
+    <div class="suggest-section">
+      <button class="btn primary" onclick="autoFill()">⚡ Auto-Fill All</button>
+    </div>
+  </div>
+</div>
+
+<div class="context-menu" id="contextMenu">
+  <div class="context-menu-item danger" onclick="removeFromContext()">Remove Player</div>
+</div>
+
+<script>
+const PLAYERS = [
+  "H. Reinhardt","J. Reinhardt","B. Cox","R. Sullivan",
+  "G. Williams","C. Coleman","M. Cage","M. Warren",
+  "L. Fraser","N. Crosby","G. Sprague","F. Butler"
+];
+
+const POSITIONS = [
+  "Pitcher","Catcher","First Base","Shortstop",
+  "Second Base","Third Base","Left Field","Center Field","Right Field"
+];
+
+const POS_ABBREV = {
+  "Pitcher":"P","Catcher":"C","First Base":"1B","Second Base":"2B",
+  "Third Base":"3B","Shortstop":"SS","Left Field":"LF",
+  "Center Field":"CF","Right Field":"RF"
+};
+
+const PLAYER_POSITIONS = {
+  "H. Reinhardt":["Right Field","Left Field","Center Field","Pitcher","Third Base"],
+  "J. Reinhardt":["Pitcher","Left Field","Second Base","Right Field","Center Field","Third Base","Shortstop"],
+  "B. Cox":["Catcher","First Base","Right Field","Left Field","Pitcher"],
+  "R. Sullivan":["Pitcher","Catcher","First Base","Third Base","Left Field","Right Field","Second Base","Shortstop","Center Field"],
+  "G. Williams":["Second Base","Left Field","Right Field","Center Field","Shortstop","Pitcher","Third Base"],
+  "C. Coleman":["First Base","Left Field","Right Field","Catcher","Center Field","Second Base","Pitcher","Third Base"],
+  "M. Cage":["Pitcher","Center Field","Third Base","Shortstop","Left Field","Right Field","Second Base"],
+  "M. Warren":["Right Field","Left Field","Second Base"],
+  "L. Fraser":["First Base","Third Base","Left Field","Right Field"],
+  "N. Crosby":["Third Base","Left Field","Right Field","Pitcher","Catcher","First Base"],
+  "G. Sprague":["Left Field","Third Base","Right Field","Second Base","Catcher","Pitcher"],
+  "F. Butler":["Second Base","Left Field","Right Field","Center Field","Shortstop","Pitcher"]
+};
+
+const PROFICIENCY = {
+  "Pitcher":["R. Sullivan","J. Reinhardt","M. Cage","H. Reinhardt","G. Williams","C. Coleman","L. Fraser","B. Cox","F. Butler","N. Crosby","G. Sprague"],
+  "Catcher":["R. Sullivan","C. Coleman","B. Cox","N. Crosby","G. Sprague"],
+  "First Base":["R. Sullivan","C. Coleman","B. Cox","L. Fraser","N. Crosby"],
+  "Second Base":["J. Reinhardt","G. Williams","F. Butler","M. Cage","R. Sullivan","C. Coleman","G. Sprague","M. Warren"],
+  "Third Base":["N. Crosby","R. Sullivan","M. Cage","J. Reinhardt","G. Sprague","L. Fraser","H. Reinhardt"],
+  "Shortstop":["M. Cage","R. Sullivan","J. Reinhardt","G. Williams","F. Butler"],
+  "Left Field":["M. Cage","J. Reinhardt","C. Coleman","H. Reinhardt","G. Williams","R. Sullivan","F. Butler","G. Sprague","M. Warren","N. Crosby","B. Cox","L. Fraser"],
+  "Center Field":["M. Cage","J. Reinhardt","C. Coleman","H. Reinhardt","G. Williams","R. Sullivan","F. Butler"],
+  "Right Field":["M. Cage","J. Reinhardt","H. Reinhardt","C. Coleman","G. Williams","R. Sullivan","M. Warren","G. Sprague","F. Butler","B. Cox","N. Crosby","L. Fraser"]
+};
+
+const INNINGS = 6;
+const FIELD_SPOTS = 9;
+
+// State
+let grid = [];
+for (let i = 0; i < INNINGS; i++) {
+  grid[i] = {};
+  POSITIONS.forEach(p => grid[i][p] = null);
+  for (let b = 0; b < 3; b++) grid[i]["Bench"+b] = null;
+}
+
+let absentPlayers = new Set();
+let dragPlayer = null;
+let dragSource = null;
+let contextTarget = null;
+
+function getActivePlayers() { return PLAYERS.filter(p => !absentPlayers.has(p)); }
+function getBenchSpots() { return Math.max(0, getActivePlayers().length - FIELD_SPOTS); }
+
+function rebuildBenchSlots() {
+  const bs = getBenchSpots();
+  for (let i = 0; i < INNINGS; i++) {
+    for (let b = 0; b < 12; b++) {
+      if (b >= bs && grid[i]["Bench"+b]) grid[i]["Bench"+b] = null;
+      if (b >= bs) delete grid[i]["Bench"+b];
+      if (b < bs && !(("Bench"+b) in grid[i])) grid[i]["Bench"+b] = null;
+    }
+  }
+}
+
+function canPlay(player, pos) {
+  if (pos.startsWith("Bench")) return true;
+  return PLAYER_POSITIONS[player]?.includes(pos);
+}
+
+function getProfRank(player, pos) {
+  if (pos.startsWith("Bench")) return null;
+  const list = PROFICIENCY[pos];
+  if (!list) return null;
+  const idx = list.indexOf(player);
+  return idx >= 0 ? idx+1 : null;
+}
+
+function getRankClass(rank, pos) {
+  if (rank === null || pos.startsWith("Bench")) return "";
+  if (rank <= 2) return "top-pick";
+  const total = PROFICIENCY[pos]?.length || 12;
+  const pct = rank / total;
+  if (pct <= 0.33) return "top-pick";
+  if (pct <= 0.66) return "mid-pick";
+  return "low-pick";
+}
+
+function getPlayerInnings(player) {
+  let c = 0;
+  for (let i = 0; i < INNINGS; i++) if (POSITIONS.some(p => grid[i][p] === player)) c++;
+  return c;
+}
+
+function getPlayerSitting(player) {
+  let s = [];
+  for (let i = 0; i < INNINGS; i++) if (!POSITIONS.some(p => grid[i][p] === player)) s.push(i);
+  return s;
+}
+
+function getPlayerPositionInInning(player, inning) {
+  for (const pos of POSITIONS) if (grid[inning][pos] === player) return pos;
+  for (let b = 0; b < 12; b++) if (grid[inning]["Bench"+b] === player) return "Bench"+b;
+  return null;
+}
+
+function getAvailableForInning(inning) {
+  const assigned = new Set();
+  POSITIONS.forEach(pos => { if (grid[inning][pos]) assigned.add(grid[inning][pos]); });
+  const bs = getBenchSpots();
+  for (let b = 0; b < bs; b++) if (grid[inning]["Bench"+b]) assigned.add(grid[inning]["Bench"+b]);
+  return getActivePlayers().filter(p => !assigned.has(p));
+}
+
+function getFilledCount(inning) {
+  return POSITIONS.filter(pos => grid[inning][pos] !== null).length;
+}
+
+function getSuggestions(inning, pos, max = 3) {
+  if (pos.startsWith("Bench")) return [];
+
+  const available = getAvailableForInning(inning);
+  const eligible = available
+    .filter(p => canPlay(p, pos))
+    .sort((a, b) => (getProfRank(a, pos) || 99) - (getProfRank(b, pos) || 99));
+
+  return eligible.slice(0, max);
+}
+
+function autoBench() {
+  // For each inning, if remaining available players exactly fill the open bench slots, auto-place them
+  const bs = getBenchSpots();
+  let changed = false;
+  for (let i = 0; i < INNINGS; i++) {
+    const available = getAvailableForInning(i);
+    if (available.length === 0) continue;
+
+    // Count open bench slots in this inning
+    let openBench = 0;
+    for (let b = 0; b < bs; b++) {
+      if (!grid[i]["Bench" + b]) openBench++;
+    }
+
+    if (openBench > 0 && available.length <= openBench) {
+      let bIdx = 0;
+      for (const player of available) {
+        while (bIdx < bs && grid[i]["Bench" + bIdx]) bIdx++;
+        if (bIdx < bs) {
+          grid[i]["Bench" + bIdx] = player;
+          changed = true;
+          bIdx++;
+        }
+      }
+    }
+  }
+  return changed;
+}
+
+// Validation
+function validate() {
+  const issues = [];
+  const ap = getActivePlayers();
+
+  ap.forEach(player => {
+    const inn = getPlayerInnings(player);
+    const sitting = getPlayerSitting(player);
+    const totalAssigned = grid.reduce((n,g) => n + (Object.values(g).some(v=>v!==null)?1:0), 0);
+    if (inn < 3 && totalAssigned >= INNINGS)
+      issues.push({type:'error',msg:`${player} only plays ${inn} inn (min 3)`});
+
+    for (let i = 0; i < INNINGS-1; i++) {
+      if (sitting.includes(i) && sitting.includes(i+1)) {
+        if (POSITIONS.some(p=>grid[i][p]!==null) && POSITIONS.some(p=>grid[i+1][p]!==null))
+          issues.push({type:'error',msg:`${player} sits inn ${i+1} & ${i+2} in a row`});
+      }
+    }
+  });
+
+  const bs = getBenchSpots();
+  for (let i = 0; i < INNINGS; i++) {
+    const seen = {};
+    [...POSITIONS,...Array.from({length:bs},(_,b)=>"Bench"+b)].forEach(pos => {
+      const p = grid[i][pos];
+      if (p) { if (seen[p]) issues.push({type:'error',msg:`${p} assigned twice in inn ${i+1}`}); seen[p]=true; }
+    });
+    let filled = POSITIONS.filter(p=>grid[i][p]!==null).length;
+    if (filled > 0 && filled < FIELD_SPOTS)
+      issues.push({type:'warn',msg:`Inning ${i+1}: ${FIELD_SPOTS-filled} empty spot${FIELD_SPOTS-filled>1?'s':''}`});
+  }
+
+  if (issues.length === 0) {
+    const totalFilled = grid.reduce((n,g)=>n+POSITIONS.filter(p=>g[p]!==null).length,0);
+    if (totalFilled === 0) issues.push({type:'ok',msg:'Drag players from pools below each inning, or use Auto-Fill'});
+    else if (totalFilled === INNINGS*FIELD_SPOTS) issues.push({type:'ok',msg:'All innings filled — rotation is valid! ✓'});
+  }
+
+  return issues;
+}
+
+// ============ RENDER ============
+function render() {
+  autoBench();
+  renderAttendance();
+  renderTable();
+  renderValidation();
+}
+
+function renderAttendance() {
+  const el = document.getElementById('attendanceBar');
+  el.innerHTML = '<span class="attendance-label">Attendance</span>';
+  PLAYERS.forEach(player => {
+    const isAbsent = absentPlayers.has(player);
+    const innings = getPlayerInnings(player);
+    const div = document.createElement('div');
+    div.className = 'att-player' + (isAbsent?' absent':'');
+
+    let bc = 'none', bt = `${innings}/6`;
+    if (isAbsent) { bc='out'; bt='OUT'; }
+    else if (innings>=3) bc='ok';
+    else if (innings>=1) bc='warn';
+
+    div.innerHTML = `<input type="checkbox" ${isAbsent?'':'checked'}><span class="att-name">${player}</span><span class="att-innings ${bc}">${bt}</span>`;
+
+    div.querySelector('input').addEventListener('change', (e) => {
+      if (!e.target.checked) {
+        absentPlayers.add(player);
+        for (let i = 0; i < INNINGS; i++) {
+          [...POSITIONS,...Array.from({length:12},(_,b)=>"Bench"+b)].forEach(pos => {
+            if (grid[i][pos] === player) grid[i][pos] = null;
+          });
+        }
+      } else { absentPlayers.delete(player); }
+      rebuildBenchSlots();
+      render();
+    });
+    el.appendChild(div);
+  });
+}
+
+function renderTable() {
+  const table = document.getElementById('rotationTable');
+  table.innerHTML = '';
+  const bs = getBenchSpots();
+  const allPositions = [...POSITIONS,...Array.from({length:bs},(_,b)=>"Bench"+b)];
+
+  // Header
+  const thead = document.createElement('thead');
+  const hr = document.createElement('tr');
+  const thPos = document.createElement('th');
+  thPos.className = 'pos-col'; thPos.textContent = 'Position';
+  hr.appendChild(thPos);
+  for (let i = 0; i < INNINGS; i++) {
+    const th = document.createElement('th');
+    th.className = 'inning-col';
+    th.innerHTML = `Inning ${i+1} <span class="clear-inning" title="Clear inning ${i+1}" onclick="clearInning(${i})">✕</span>`;
+    hr.appendChild(th);
+  }
+  thead.appendChild(hr);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+
+  // Position rows
+  allPositions.forEach(pos => {
+    const tr = document.createElement('tr');
+    const isBench = pos.startsWith("Bench");
+
+    const tdLabel = document.createElement('td');
+    tdLabel.className = 'pos-cell' + (isBench?' bench-cell':'');
+    tdLabel.textContent = isBench ? `Bench ${parseInt(pos.replace('Bench',''))+1}` : `${POS_ABBREV[pos]}  ${pos}`;
+    tr.appendChild(tdLabel);
+
+    for (let i = 0; i < INNINGS; i++) {
+      const td = document.createElement('td');
+      const player = grid[i][pos];
+
+      if (player) {
+        const rank = getProfRank(player, pos);
+        const rc = getRankClass(rank, pos);
+        const chip = document.createElement('div');
+        chip.className = `placed-player ${rc}`;
+        chip.textContent = player;
+        if (rank) chip.innerHTML += `<span class="rank-ind">#${rank}</span>`;
+        if (isBench) td.classList.add('bench-drop');
+
+        chip.draggable = true;
+        chip.addEventListener('dragstart', (e) => {
+          dragPlayer = player;
+          dragSource = {inning:i, position:pos};
+          chip.style.opacity = '0.4';
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        chip.addEventListener('dragend', () => { chip.style.opacity='1'; dragPlayer=null; dragSource=null; });
+        chip.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          contextTarget = {inning:i,position:pos};
+          const menu = document.getElementById('contextMenu');
+          menu.style.display='block'; menu.style.left=e.clientX+'px'; menu.style.top=e.clientY+'px';
+        });
+        chip.addEventListener('dblclick', () => { grid[i][pos]=null; render(); });
+        td.appendChild(chip);
+      } else {
+        td.classList.add('drop-zone');
+        if (isBench) td.classList.add('bench-drop');
+
+        // Show suggestion ghosts if 3+ players placed in this inning
+        const suggestions = getSuggestions(i, pos);
+        if (suggestions.length > 0) {
+          const wrap = document.createElement('div');
+          wrap.className = 'suggestions-wrap';
+          suggestions.forEach((sug, idx) => {
+            const ghost = document.createElement('div');
+            ghost.className = 'suggestion-ghost ' + (idx === 0 ? 'top-sug' : idx === 1 ? 'mid-sug' : 'low-sug');
+            const rank = getProfRank(sug, pos);
+            ghost.textContent = sug + (rank ? ` #${rank}` : '');
+            ghost.title = `Click to place ${sug}`;
+            ghost.addEventListener('click', (e) => {
+              e.stopPropagation();
+              const existingPos = getPlayerPositionInInning(sug, i);
+              if (existingPos) grid[i][existingPos] = null;
+              grid[i][pos] = sug;
+              render();
+            });
+            wrap.appendChild(ghost);
+          });
+          td.appendChild(wrap);
+        }
+      }
+
+      // Drop events
+      td.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (!dragPlayer) return;
+        if (!isBench && !canPlay(dragPlayer, pos)) td.classList.add('invalid-drop');
+        else td.classList.add('drag-over');
+      });
+      td.addEventListener('dragleave', () => td.classList.remove('drag-over','invalid-drop'));
+      td.addEventListener('drop', (e) => {
+        e.preventDefault();
+        td.classList.remove('drag-over','invalid-drop');
+        if (!dragPlayer) return;
+        if (!isBench && !canPlay(dragPlayer, pos)) return;
+
+        const existingPos = getPlayerPositionInInning(dragPlayer, i);
+        if (existingPos && !(dragSource && dragSource.inning===i && dragSource.position===existingPos))
+          grid[i][existingPos] = null;
+
+        if (dragSource && dragSource !== 'pool')
+          grid[dragSource.inning][dragSource.position] = null;
+
+        const displaced = grid[i][pos];
+        if (displaced && dragSource && dragSource !== 'pool')
+          grid[dragSource.inning][dragSource.position] = displaced;
+
+        grid[i][pos] = dragPlayer;
+        dragPlayer=null; dragSource=null;
+        render();
+      });
+
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+
+  // Separator
+  const sepTr = document.createElement('tr');
+  sepTr.className = 'separator-row';
+  for (let c = 0; c <= INNINGS; c++) sepTr.appendChild(document.createElement('td'));
+  tbody.appendChild(sepTr);
+
+  // Pool header
+  const phTr = document.createElement('tr');
+  phTr.className = 'pool-header-row';
+  const plTd = document.createElement('td');
+  plTd.className = 'pool-label-cell';
+  plTd.textContent = 'Available';
+  phTr.appendChild(plTd);
+  for (let i = 0; i < INNINGS; i++) {
+    const td = document.createElement('td');
+    const avail = getAvailableForInning(i);
+    td.textContent = `${avail.length} player${avail.length!==1?'s':''}`;
+    phTr.appendChild(td);
+  }
+  tbody.appendChild(phTr);
+
+  // Pool row
+  const poolTr = document.createElement('tr');
+  const poolLabel = document.createElement('td');
+  poolLabel.className = 'pool-cell pool-label-td';
+  poolTr.appendChild(poolLabel);
+
+  for (let i = 0; i < INNINGS; i++) {
+    const td = document.createElement('td');
+    td.className = 'pool-cell';
+    const available = getAvailableForInning(i);
+
+    if (available.length === 0) {
+      td.innerHTML = '<div class="pool-empty">All placed</div>';
+    } else {
+      available.forEach(player => {
+        const chip = document.createElement('div');
+        chip.className = 'pool-chip';
+        chip.textContent = player;
+        chip.draggable = true;
+
+        // Highlight constraints
+        const innings = getPlayerInnings(player);
+        let satPrev = false;
+        if (i > 0 && !POSITIONS.some(pos => grid[i-1][pos]===player) && POSITIONS.some(pos => grid[i-1][pos]!==null))
+          satPrev = true;
+
+        if (satPrev) { chip.classList.add('has-error'); chip.title = 'Sat last inning — must play!'; }
+        else if (innings === 0) { chip.classList.add('has-warning'); chip.title = "Hasn't played yet"; }
+
+        chip.addEventListener('dragstart', (e) => {
+          dragPlayer = player; dragSource = 'pool';
+          chip.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        chip.addEventListener('dragend', () => { chip.classList.remove('dragging'); dragPlayer=null; dragSource=null; });
+
+        td.appendChild(chip);
+      });
+    }
+
+    // Allow dropping back to pool to unassign
+    td.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (dragPlayer && dragSource && dragSource !== 'pool' && dragSource.inning === i)
+        td.style.borderColor = 'var(--accent)';
+    });
+    td.addEventListener('dragleave', () => { td.style.borderColor = ''; });
+    td.addEventListener('drop', (e) => {
+      e.preventDefault(); td.style.borderColor = '';
+      if (dragPlayer && dragSource && dragSource !== 'pool' && dragSource.inning === i) {
+        grid[dragSource.inning][dragSource.position] = null;
+        dragPlayer=null; dragSource=null; render();
+      }
+    });
+
+    poolTr.appendChild(td);
+  }
+  tbody.appendChild(poolTr);
+  table.appendChild(tbody);
+}
+
+function renderValidation() {
+  const el = document.getElementById('validationList');
+  const issues = validate();
+  el.innerHTML = '';
+
+  const ap = getActivePlayers();
+
+  // Innings bar chart - sorted low to high
+  const sh = document.createElement('div');
+  sh.style.cssText = 'font-family:Oswald;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);padding:6px 4px 4px;';
+  sh.textContent = 'Innings Played';
+  el.appendChild(sh);
+
+  const chartDiv = document.createElement('div');
+  chartDiv.className = 'innings-chart';
+
+  // Sort players by innings ascending, then alphabetically for ties
+  const sorted = [...ap].sort((a, b) => {
+    const diff = getPlayerInnings(a) - getPlayerInnings(b);
+    return diff !== 0 ? diff : a.localeCompare(b);
+  });
+
+  sorted.forEach(player => {
+    const inn = getPlayerInnings(player);
+    const sitting = getPlayerSitting(player);
+
+    // Check for consecutive sit violations
+    let hasError = false;
+    for (let s = 0; s < sitting.length - 1; s++) {
+      if (sitting[s+1] - sitting[s] === 1 && POSITIONS.some(p => grid[sitting[s]][p] !== null) && POSITIONS.some(p => grid[sitting[s+1]][p] !== null)) {
+        hasError = true;
+      }
+    }
+
+    // Check if player has exactly 3 innings and the 6th inning is one of them
+    let atRisk = false;
+    if (inn === 3) {
+      const playsInning6 = POSITIONS.some(pos => grid[INNINGS - 1][pos] === player);
+      if (playsInning6) atRisk = true;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'inn-bar-row';
+
+    const name = document.createElement('div');
+    name.className = 'inn-bar-name';
+    name.textContent = player;
+    if (inn < 3) name.style.color = 'var(--yellow)';
+    if (hasError) name.style.color = 'var(--red)';
+
+    const track = document.createElement('div');
+    track.className = 'inn-bar-track';
+
+    const fill = document.createElement('div');
+    fill.className = `inn-bar-fill fill-${inn}`;
+
+    const count = document.createElement('div');
+    count.className = 'inn-bar-count';
+    count.textContent = inn;
+
+    track.appendChild(fill);
+    row.appendChild(name);
+    row.appendChild(track);
+    row.appendChild(count);
+
+    if (hasError) {
+      const warn = document.createElement('span');
+      warn.className = 'inn-bar-warn';
+      warn.textContent = '⚠';
+      warn.title = 'Consecutive sits';
+      row.appendChild(warn);
+    }
+
+    if (atRisk) {
+      const risk = document.createElement('span');
+      risk.className = 'inn-bar-warn';
+      risk.style.color = 'var(--orange)';
+      risk.textContent = '⏱';
+      risk.title = 'Only 3 innings — 6th inning needed. At risk if game is called early.';
+      row.appendChild(risk);
+    }
+
+    chartDiv.appendChild(row);
+  });
+
+  el.appendChild(chartDiv);
+
+  if (issues.length > 0) {
+    const ih = document.createElement('div');
+    ih.style.cssText = 'font-family:Oswald;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);padding:10px 4px 4px;';
+    ih.textContent = 'Issues';
+    el.appendChild(ih);
+    issues.forEach(issue => {
+      const item = document.createElement('div');
+      item.className = `v-item ${issue.type}`;
+      item.innerHTML = `<span class="v-icon">${issue.type==='ok'?'✓':issue.type==='warn'?'!':'✕'}</span><span>${issue.msg}</span>`;
+      el.appendChild(item);
+    });
+  }
+}
+
+// Context menu
+document.addEventListener('click', () => document.getElementById('contextMenu').style.display='none');
+function removeFromContext() {
+  if (contextTarget) { grid[contextTarget.inning][contextTarget.position]=null; contextTarget=null; render(); }
+}
+
+// Clear
+function clearAll() {
+  for (let i=0;i<INNINGS;i++) {
+    POSITIONS.forEach(p=>grid[i][p]=null);
+    for (let b=0;b<12;b++) if (("Bench"+b) in grid[i]) grid[i]["Bench"+b]=null;
+  }
+  render();
+}
+
+function clearInning(inning) {
+  POSITIONS.forEach(p => grid[inning][p] = null);
+  for (let b = 0; b < 12; b++) if (("Bench"+b) in grid[inning]) grid[inning]["Bench"+b] = null;
+  render();
+}
+
+// Auto-fill
+function autoFill() {
+  clearAll();
+  const r = solveRotation();
+  if (r) { for (let i=0;i<INNINGS;i++) Object.keys(r[i]).forEach(pos=>grid[i][pos]=r[i][pos]); }
+  render();
+}
+
+function solveRotation() {
+  const ap = getActivePlayers(), bs = getBenchSpots();
+  if (ap.length < FIELD_SPOTS) { alert(`Only ${ap.length} players — need at least ${FIELD_SPOTS}.`); return null; }
+
+  const totalSits = INNINGS * bs;
+  const playerValue = {};
+  ap.forEach(p => {
+    let tr=0,c=0;
+    POSITIONS.forEach(pos => { const r=getProfRank(p,pos); if(r!==null){tr+=r;c++;} });
+    playerValue[p] = c>0?tr/c:99;
+  });
+  const sorted = [...ap].sort((a,b)=>playerValue[a]-playerValue[b]);
+
+  let sitCounts = {}, remaining = totalSits;
+  sorted.forEach(p=>sitCounts[p]=0);
+  if (bs > 0) {
+    const maxSits = INNINGS-3;
+    let passes=0;
+    while(remaining>0&&passes<10){
+      for(let i=sorted.length-1;i>=0&&remaining>0;i--)
+        if(sitCounts[sorted[i]]<maxSits){sitCounts[sorted[i]]++;remaining--;}
+      passes++;
+    }
+  }
+
+  const sitSchedule = {};
+  ap.forEach(p=>sitSchedule[p]=[]);
+
+  function isValid(){
+    const is=Array(INNINGS).fill(0);
+    ap.forEach(p=>sitSchedule[p].forEach(i=>is[i]++));
+    for(let i=0;i<INNINGS;i++) if(is[i]>bs) return false;
+    return true;
+  }
+
+  function schedule(idx){
+    if(idx>=ap.length){
+      const is=Array(INNINGS).fill(0);
+      ap.forEach(p=>sitSchedule[p].forEach(i=>is[i]++));
+      return is.every(s=>s===bs);
+    }
+    const player=ap[idx], ns=sitCounts[player];
+    if(ns===0){sitSchedule[player]=[];return schedule(idx+1);}
+    function pick(chosen,from){
+      if(chosen.length===ns){
+        sitSchedule[player]=chosen;
+        if(isValid()&&schedule(idx+1)) return true;
+        sitSchedule[player]=[]; return false;
+      }
+      for(let i=from;i<INNINGS;i++){
+        if(chosen.length>0&&i===chosen[chosen.length-1]+1) continue;
+        const is=ap.reduce((n,p)=>n+(sitSchedule[p].includes(i)?1:0),0);
+        if(is>=bs) continue;
+        chosen.push(i);
+        if(pick([...chosen],i+1)) return true;
+        chosen.pop();
+      }
+      return false;
+    }
+    return pick([],0);
+  }
+  schedule(0);
+
+  const result = [];
+  for(let i=0;i<INNINGS;i++){
+    result[i]={}; POSITIONS.forEach(p=>result[i][p]=null);
+    for(let b=0;b<bs;b++) result[i]["Bench"+b]=null;
+    const sitters=ap.filter(p=>sitSchedule[p].includes(i));
+    const fielders=ap.filter(p=>!sitSchedule[p].includes(i));
+    const assigned=new Set();
+    const posByScar=[...POSITIONS].sort((a,b)=>fielders.filter(p=>canPlay(p,a)).length-fielders.filter(p=>canPlay(p,b)).length);
+    const prev={};
+    if(i>0) POSITIONS.forEach(pos=>{if(result[i-1][pos])prev[result[i-1][pos]]=pos;});
+    for(const pos of posByScar){
+      const el=fielders.filter(p=>!assigned.has(p)&&canPlay(p,pos))
+        .sort((a,b)=>{const ra=getProfRank(a,pos)||99,rb=getProfRank(b,pos)||99;return(ra+(prev[a]===pos?2:0))-(rb+(prev[b]===pos?2:0));});
+      if(el.length>0){result[i][pos]=el[0];assigned.add(el[0]);}
+    }
+    sitters.forEach((p,idx)=>{if(idx<bs)result[i]["Bench"+idx]=p;});
+  }
+  return result;
+}
+
+// Suggest next
+function suggestInning(){
+  const ap=getActivePlayers(), bs=getBenchSpots();
+  let ti=-1;
+  for(let i=0;i<INNINGS;i++) if(POSITIONS.filter(p=>grid[i][p]!==null).length<FIELD_SPOTS){ti=i;break;}
+  if(ti===-1) return;
+
+  const allSlots=[...POSITIONS,...Array.from({length:bs},(_,b)=>"Bench"+b)];
+  const aa=new Set();
+  allSlots.forEach(pos=>{if(grid[ti][pos])aa.add(grid[ti][pos]);});
+
+  const cantSit=new Set();
+  if(ti>0) ap.forEach(p=>{
+    if(!POSITIONS.some(pos=>grid[ti-1][pos]===p)&&POSITIONS.some(pos=>grid[ti-1][pos]!==null)) cantSit.add(p);
+  });
+
+  const needsPlay=ap.filter(p=>getPlayerInnings(p)+(INNINGS-ti)<=3);
+  const available=ap.filter(p=>!aa.has(p));
+  const mustPlay=available.filter(p=>needsPlay.includes(p)||cantSit.has(p));
+  const others=available.filter(p=>!mustPlay.includes(p));
+  const pool=[...mustPlay,...others];
+
+  const unfilled=POSITIONS.filter(p=>!grid[ti][p]);
+  const assigned=new Set(aa);
+  unfilled.sort((a,b)=>pool.filter(p=>!assigned.has(p)&&canPlay(p,a)).length-pool.filter(p=>!assigned.has(p)&&canPlay(p,b)).length);
+
+  for(const pos of unfilled){
+    const el=pool.filter(p=>!assigned.has(p)&&canPlay(p,pos)).sort((a,b)=>(getProfRank(a,pos)||99)-(getProfRank(b,pos)||99));
+    if(el.length>0){grid[ti][pos]=el[0];assigned.add(el[0]);}
+  }
+
+  const benched=pool.filter(p=>!assigned.has(p));
+  benched.forEach((p,idx)=>{if(idx<bs)grid[ti]["Bench"+idx]=p;});
+  render();
+}
+
+render();
+
+function exportPrint() {
+  const bs = getBenchSpots();
+  const allPos = [...POSITIONS, ...Array.from({length: bs}, (_, b) => "Bench" + b)];
+  const ap = getActivePlayers();
+  const today = new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  // Build table rows
+  let tableRows = '';
+  allPos.forEach((pos, rowIdx) => {
+    const isBench = pos.startsWith("Bench");
+    const label = isBench ? `Bench ${parseInt(pos.replace('Bench',''))+1}` : `${POS_ABBREV[pos]} &nbsp;${pos}`;
+    const rowBg = isBench ? '#fffcf0' : (rowIdx % 2 === 0 ? '#fff' : '#f5f6f7');
+    const labelColor = isBench ? '#b48a14' : '#25282a';
+    const labelStyle = isBench ? 'font-style:italic;' : '';
+    const rowHeight = isBench ? '' : 'height:36px;';
+
+    let cells = `<td style="padding:6px 8px;font-weight:700;font-size:11px;color:${labelColor};background:${rowBg};border-bottom:1px solid #ddd;white-space:nowrap;vertical-align:top;${labelStyle}${rowHeight}">${label}</td>`;
+
+    for (let i = 0; i < INNINGS; i++) {
+      const player = grid[i][pos];
+      let cellContent = '';
+
+      if (player) {
+        const chipBg = isBench ? '#eee' : '#e8edf2';
+        const chipBorder = isBench ? '#bbb' : '#9aa5b1';
+        const chipColor = isBench ? '#5b6770' : '#25282a';
+
+        cellContent = `<div style="display:inline-block;padding:3px 8px;border-radius:4px;background:${chipBg};border:1.5px solid ${chipBorder};font-weight:700;font-size:10px;color:${chipColor};white-space:nowrap;">${player}</div>`;
+      }
+
+      if (!isBench) {
+        // Add a dotted write-in line below the player chip
+        const writeLine = `<div style="margin-top:4px;border-bottom:1px dotted #bbb;height:1px;width:85%;margin-left:auto;margin-right:auto;"></div>`;
+        cells += `<td style="padding:4px 3px;text-align:center;background:${rowBg};border-bottom:1px solid #ddd;vertical-align:top;${rowHeight}">${cellContent}${writeLine}</td>`;
+      } else {
+        cells += `<td style="padding:4px 3px;text-align:center;background:${rowBg};border-bottom:1px solid #ddd;">${cellContent}</td>`;
+      }
+    }
+
+    tableRows += `<tr>${cells}</tr>`;
+  });
+
+  // Inning headers
+  let headerCells = '<th style="padding:8px 6px;text-align:left;font-size:10px;color:#fff;background:#0057b8;">POSITION</th>';
+  for (let i = 0; i < INNINGS; i++) {
+    headerCells += `<th style="padding:8px 6px;text-align:center;font-size:10px;color:#fff;background:#0057b8;">INNING ${i+1}</th>`;
+  }
+
+  // Absent
+  let absentHtml = '';
+  if (absentPlayers.size > 0) {
+    absentHtml = `<div style="font-size:9px;color:#cf3d3d;margin-bottom:6px;">Absent: ${[...absentPlayers].join(', ')}</div>`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<title>Bronco Braves Defensive Rotation</title>
+<style>
+  @page { size: letter landscape; margin: 0.3in; }
+  @media print {
+    body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+  body { font-family: -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; margin: 0; padding: 18px; }
+  table { width: 100%; border-collapse: collapse; border: 1.5px solid #5b6770; }
+  th, td { border-left: 1px solid #ddd; }
+  th:first-child, td:first-child { border-left: none; }
+</style>
+</head>
+<body>
+  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;">
+    <div>
+      <span style="font-size:22px;font-weight:800;color:#25282a;letter-spacing:1px;">BRONCO BRAVES</span>
+      <span style="font-size:15px;color:#5b6770;margin-left:10px;">Defensive Rotation</span>
+    </div>
+    <div style="text-align:right;">
+      <div style="font-size:10px;color:#5b6770;">${today}</div>
+      <div style="font-size:10px;color:#5b6770;">${ap.length} Players Active</div>
+    </div>
+  </div>
+  ${absentHtml}
+  <table>
+    <thead><tr>${headerCells}</tr></thead>
+    <tbody>${tableRows}</tbody>
+  </table>
+</body>
+</html>`;
+
+  const printWindow = window.open('', '_blank');
+  printWindow.document.write(html);
+  printWindow.document.close();
+  printWindow.focus();
+  setTimeout(() => printWindow.print(), 400);
+}
+</script>
+</body>
+</html>
